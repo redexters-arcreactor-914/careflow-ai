@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CareFlow AI — Triage Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bone: #f5f3ee;
+    --surface: #ffffff;
+    --border: #e4e0d6;
+    --ink: #1a1b1c;
+    --steel: #6f6d67;
+    --teal: #0f6e56;
+    --teal-bg: #e1f0ea;
+    --coral: #c9502e;
+    --coral-bg: #fbe9e2;
+    --amber: #b07a16;
+    --amber-bg: #faf0db;
+    --gray-badge-bg: #ecebe6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bone: #15161a;
+      --surface: #1d1f24;
+      --border: #2d2f35;
+      --ink: #eef0f2;
+      --steel: #9a9da3;
+      --teal-bg: #16342c;
+      --coral-bg: #3a241d;
+      --amber-bg: #352c18;
+      --gray-badge-bg: #26282d;
+    }
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{ margin: 0; height: 100%; }
+  body{
+    background: var(--bone);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    min-height: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mono{ font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* ---- sidebar ---- */
+  .sidebar{
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .sidebar .brand{
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 0 10px 20px;
+  }
+  .sidebar .brand .mark{
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--teal);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 12px; font-weight: 700;
+  }
+  .nav-item{
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--steel);
+    cursor: pointer;
+  }
+  .nav-item.active{ background: var(--teal-bg); color: var(--teal); }
+  .nav-item:hover:not(.active){ background: var(--gray-badge-bg); }
+  .nav-item svg{ width: 16px; height: 16px; }
+
+  /* ---- main layout ---- */
+  .main{ flex: 1; display: flex; min-width: 0; }
+
+  .case-list{
+    width: 340px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .case-list-header{
+    padding: 20px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .case-list-header h1{
+    font-size: 16px; margin: 0 0 4px;
+  }
+  .case-list-header p{
+    font-size: 12.5px; color: var(--steel); margin: 0;
+  }
+
+  .case-row{
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .case-row:hover{ background: var(--gray-badge-bg); }
+  .case-row.selected{ background: var(--teal-bg); }
+  .case-row-top{
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px;
+  }
+  .case-id{ font-size: 12px; color: var(--steel); }
+  .badge{
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+  .badge.critical{ background: var(--coral-bg); color: var(--coral); }
+  .badge.high{ background: var(--amber-bg); color: var(--amber); }
+  .badge.medium{ background: var(--teal-bg); color: var(--teal); }
+  .badge.low{ background: var(--gray-badge-bg); color: var(--steel); }
+
+  .case-snippet{
+    font-size: 13px; color: var(--ink);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .case-meta{
+    display: flex; gap: 10px; font-size: 11px; color: var(--steel);
+  }
+  .flag-count{ color: var(--coral); font-weight: 600; }
+
+  /* ---- detail panel ---- */
+  .detail{ flex: 1; overflow-y: auto; padding: 28px 32px; min-width: 0; }
+  .detail-header{
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .detail-header h2{ font-size: 20px; margin: 0 0 4px; }
+  .detail-header .mono{ font-size: 12.5px; color: var(--steel); }
+
+  .section{ margin-bottom: 26px; }
+  .section h3{
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--steel); margin: 0 0 10px;
+  }
+
+  .urgency-banner{
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  .urgency-banner.critical{ background: var(--coral-bg); color: var(--coral); }
+  .urgency-banner.high{ background: var(--amber-bg); color: var(--amber); }
+  .urgency-banner.medium{ background: var(--teal-bg); color: var(--teal); }
+  .urgency-banner .label{ font-weight: 700; font-size: 13px; text-transform: uppercase; }
+  .urgency-banner .reason{ font-size: 13px; opacity: 0.9; }
+
+  .field-row{
+    display: flex; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .field-row .name{ color: var(--steel); }
+  .field-row .conf{ font-size: 11px; color: var(--steel); }
+
+  .flag-item{
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 12px; border-radius: 8px; background: var(--surface);
+    border: 1px solid var(--border); margin-bottom: 8px; font-size: 13px;
+  }
+  .flag-item .dot{
+    width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+  }
+  .flag-item.critical .dot{ background: var(--coral); }
+  .flag-item.warning .dot{ background: var(--amber); }
+  .flag-item.info .dot{ background: var(--steel); }
+
+  .followup-list{ font-size: 13px; padding-left: 18px; margin: 0; color: var(--ink); }
+  .followup-list li{ margin-bottom: 6px; }
+
+  .review-actions{ display: flex; gap: 10px; margin-top: 10px; }
+  .btn{
+    padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+    cursor: pointer;
+  }
+  .btn.primary{ background: var(--teal); color: white; border-color: var(--teal); }
+  .btn.danger{ background: var(--coral); color: white; border-color: var(--coral); }
+
+  .form-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .form-field label{ font-size:12px; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:.06em; }
+  .form-field select, .form-field textarea, .form-field input[type=file]{
+    background: var(--surface); color: var(--ink); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; font: inherit; font-size:14px; }
+  .form-field textarea{ min-height:110px; resize:vertical; }
+  .consent-row{ display:flex; gap:10px; align-items:flex-start; background:var(--amber-bg); border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:14px; }
+  .form-error{ color:var(--coral); font-size:13px; margin:8px 0; min-height:18px; }
+
+  .tbl{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .tbl th{ text-align:left; font-size:11.5px; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:.06em; padding:8px 10px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bone); }
+  .tbl td{ padding:10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .tbl tr.click{ cursor:pointer; } .tbl tr.click:hover td{ background:var(--gray-badge-bg); }
+  .toolbar{ display:flex; gap:10px; align-items:center; margin:0 0 16px; flex-wrap:wrap; }
+  .toolbar select{ background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font:inherit; font-size:13px; }
+  .cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+  .card .k{ font-size:11.5px; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:.06em; }
+  .card .v{ font-size:16px; margin-top:6px; font-weight:600; word-break:break-word; }
+  .about p{ font-size:14.5px; line-height:1.65; max-width:760px; }
+  .about h3{ margin:26px 0 8px; font-size:12.5px; font-weight:600; color:var(--steel); text-transform:uppercase; letter-spacing:.06em; }
+  .about ol, .about ul{ font-size:14.5px; line-height:1.7; max-width:760px; padding-left:20px; }
+</style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="brand"><span class="mark">C</span> CareFlow AI</div>
+    <div class="nav-item active" data-view="queue" onclick="showView('queue')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" data-view="cases" onclick="showView('cases')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M9 8h2"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg>
+      All cases
+    </div>
+    <div class="nav-item" data-view="audit" onclick="showView('audit')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+      Audit log
+    </div>
+    <div class="nav-item" data-view="settings" onclick="showView('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      Settings
+    </div>
+    <div class="nav-item" data-view="about" onclick="showView('about')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      About
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="case-list" id="caseList">
+      <div class="case-list-header">
+        <h1>Prioritized queue</h1>
+        <p id="queueSummary">Loading cases…</p>
+        <p id="modeNote" class="mono" style="font-size:11px;margin-top:6px;"></p>
+        <button class="btn primary" id="newBtn" style="margin-top:10px;margin-right:6px;" onclick="renderNewCase()">+ New case</button>
+        <button class="btn" id="seedBtn" style="margin-top:10px;" onclick="seedSamples()">Load sample cases</button>
+      </div>
+      <div id="caseRows"></div>
+    </div>
+
+    <div class="detail" id="detail"></div>
+  </div>
+
+<script>
+  // Demo data — shaped exactly like what GET /cases returns from main.py.
+  // Used only when the API is unreachable. Live mode fetches GET /cases.
+  const DEMO_CASES = [
+    {
+      case_id: "demo-001",
+      input: { raw_text: "I have had chest pain since this morning, it comes and goes. Also feeling a bit dizzy.", declared_language: "en" },
+      extracted_fields: [
+        { field_name: "raw_symptom_text", value: "chest pain, dizziness", source: "typed_text", confidence: 0.95 },
+        { field_name: "duration_mentioned", value: "since this morning", source: "typed_text", confidence: 0.8 },
+      ],
+      flags: [
+        { flag_type: "red_flag_symptom", description: "Chest pain reported — matches red-flag keyword list.", severity: "critical" },
+      ],
+      triage: { urgency_level: "critical", urgency_reason: "Red-flag keyword(s) detected: chest pain. Escalate immediately.", scored_by: "rule_based", suggested_followup_questions: ["Confirm current symptom status with the patient directly.", "Has emergency care already been sought?"] },
+      review_status: "pending",
+    },
+    {
+      case_id: "demo-002",
+      input: { raw_text: "mujhe 3 din se halka bukhar hai aur gale mein kharash hai", declared_language: "hi" },
+      extracted_fields: [
+        { field_name: "raw_symptom_text", value: "mild fever, sore throat", source: "typed_text", confidence: 0.9, translated: true },
+        { field_name: "duration_mentioned", value: "3 days", source: "typed_text", confidence: 0.85 },
+      ],
+      flags: [],
+      triage: { urgency_level: "medium", urgency_reason: "Mild, self-limited symptoms reported with no red-flag markers.", scored_by: "rule_based+slm", suggested_followup_questions: ["Ask whether fever has been measured or just felt."] },
+      review_status: "pending",
+    },
+    {
+      case_id: "demo-003",
+      input: { raw_text: "mera sar dard kar raha hai since yesterday, feeling thoda weak bhi", declared_language: "mixed" },
+      extracted_fields: [
+        { field_name: "raw_symptom_text", value: "headache, mild weakness", source: "typed_text", confidence: 0.7, translated: true },
+      ],
+      flags: [
+        { flag_type: "missing_info", field_name: "severity", description: "'severity' was not found in the patient's input.", severity: "info" },
+        { flag_type: "low_confidence", field_name: "raw_symptom_text", description: "Mixed-language input translated with confidence 0.70, below threshold.", severity: "warning" },
+      ],
+      triage: { urgency_level: "medium", urgency_reason: "No red flags, but translation confidence is low — worth a second look.", scored_by: "rule_based+slm", suggested_followup_questions: ["Clarify severity on a 1–10 scale.", "Ask if there's any visual disturbance or neck stiffness."] },
+      review_status: "pending",
+    },
+    {
+      case_id: "demo-004",
+      input: { raw_text: "Just a mild headache, nothing serious, will see if it goes away.", declared_language: "en" },
+      extracted_fields: [
+        { field_name: "raw_symptom_text", value: "mild headache", source: "typed_text", confidence: 0.95 },
+      ],
+      flags: [],
+      triage: { urgency_level: "low", urgency_reason: "Mild, self-reported, no red-flag markers, patient not seeking urgent care.", scored_by: "rule_based+slm", suggested_followup_questions: [] },
+      review_status: "pending",
+    },
+  ];
+
+  const API = 'http://localhost:8000';
+  let CASES = [];
+  let LIVE = false;
+  let selectedCaseId = null;
+
+  const SAMPLES = [
+    {case_id:'demo-001', patient_consent_given:true, input_type:'text', declared_language:'en',
+     raw_text:'I have had chest pain since this morning, it comes and goes. Also feeling a bit dizzy.'},
+    {case_id:'demo-002', patient_consent_given:true, input_type:'text', declared_language:'hi',
+     raw_text:'mujhe 3 din se halka bukhar hai aur gale mein kharash hai'},
+    {case_id:'demo-003', patient_consent_given:true, input_type:'text', declared_language:'mixed',
+     raw_text:'mera sar dard kar raha hai since yesterday, feeling thoda weak bhi'},
+    {case_id:'demo-004', patient_consent_given:true, input_type:'text', declared_language:'en',
+     raw_text:'Just a mild headache, nothing serious, will see if it goes away.'},
+  ];
+
+  // Patient text is untrusted input: always escape before putting it in HTML.
+  function esc(v){
+    return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+
+  function urgencyRank(level){
+    return { critical: 0, high: 1, medium: 2, low: 3 }[level] ?? 4;
+  }
+
+  async function loadCases(){
+    try {
+      const r = await fetch(API + '/cases');
+      if (!r.ok) throw new Error(r.status);
+      CASES = await r.json();            // already ranked by the server (urgency + aging)
+      LIVE = true;
+    } catch (e) {
+      CASES = [...DEMO_CASES].sort((a, b) => urgencyRank(a.triage.urgency_level) - urgencyRank(b.triage.urgency_level));
+      LIVE = false;
+    }
+    document.getElementById('modeNote').textContent = LIVE ? 'LIVE · connected to API' : 'OFFLINE · showing demo data';
+    document.getElementById('seedBtn').style.display = LIVE ? '' : 'none';
+    document.getElementById('newBtn').style.display = LIVE ? '' : 'none';
+    if (!CASES.find(c => c.case_id === selectedCaseId)) selectedCaseId = CASES.length ? CASES[0].case_id : null;
+    renderCaseList();
+    renderDetail(selectedCaseId);
+  }
+
+  async function seedSamples(){
+    for (const p of SAMPLES){
+      await fetch(API + '/cases/intake', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(p)});
+    }
+    loadCases();
+  }
+
+  async function review(caseId, action){
+    if (!LIVE){ alert('Offline demo data: start the backend to save review actions.'); return; }
+    const notes = action === 'approved' ? '' : (prompt('Reviewer notes (optional):') || '');
+    const q = new URLSearchParams({action, notes});
+    await fetch(`${API}/cases/${encodeURIComponent(caseId)}/review?${q}`, {method:'POST'});
+    loadCases();
+  }
+
+  function renderCaseList(){
+    const sorted = CASES;
+    document.getElementById('queueSummary').textContent = `${sorted.length} case${sorted.length === 1 ? '' : 's'} awaiting review`;
+
+    const rowsEl = document.getElementById('caseRows');
+    rowsEl.innerHTML = '';
+    sorted.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'case-row' + (c.case_id === selectedCaseId ? ' selected' : '');
+      row.onclick = () => { selectedCaseId = c.case_id; renderCaseList(); renderDetail(c.case_id); };
+      row.innerHTML = `
+        <div class="case-row-top">
+          <span class="case-id mono">${esc(c.case_id)}</span>
+          <span class="badge ${c.triage.urgency_level}">${c.triage.urgency_level}</span>
+        </div>
+        <div class="case-snippet">${esc(c.input.raw_text)}</div>
+        <div class="case-meta">
+          <span>${esc(c.input.declared_language || "auto")}</span>
+          ${c.review_status !== "pending" ? `<span>${esc(c.review_status)}</span>` : ""}
+          ${c.flags.length ? `<span class="flag-count">${c.flags.length} flag${c.flags.length > 1 ? 's' : ''}</span>` : ''}
+        </div>`;
+      rowsEl.appendChild(row);
+    });
+  }
+
+  function renderDetail(caseId){
+    const c = CASES.find(x => x.case_id === caseId);
+    const detailEl = document.getElementById('detail');
+    if (!c){
+      detailEl.innerHTML = `<p style="color:var(--steel);font-size:13px;">Select a case from the queue to review it.</p>`;
+      return;
+    }
+
+    const flagsHtml = c.flags.length
+      ? c.flags.map(f => `<div class="flag-item ${f.severity}"><span class="dot"></span><div>${esc(f.description)}</div></div>`).join('')
+      : `<p style="font-size:13px;color:var(--steel);">No flags on this case.</p>`;
+
+    const fieldsHtml = c.extracted_fields.map(f => `
+      <div class="field-row">
+        <span class="name">${esc(f.field_name.replace(/_/g, ' '))}</span>
+        <span>${esc(f.value)} <span class="conf mono">(${Math.round(f.confidence * 100)}%${f.translated ? ', translated' : ''})</span></span>
+      </div>`).join('');
+
+    const followupHtml = c.triage.suggested_followup_questions.length
+      ? `<ul class="followup-list">${c.triage.suggested_followup_questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul>`
+      : `<p style="font-size:13px;color:var(--steel);">No follow-up questions suggested.</p>`;
+
+    detailEl.innerHTML = `
+      <div class="detail-header">
+        <div>
+          <h2>${esc(c.case_id)}</h2>
+          <span class="mono">${esc(c.input.declared_language || 'auto')} · scored by ${esc(c.triage.scored_by)} · ${esc(c.review_status)}</span>
+        </div>
+      </div>
+
+      <div class="urgency-banner ${c.triage.urgency_level}">
+        <span class="label">${c.triage.urgency_level}</span>
+        <span class="reason">${esc(c.triage.urgency_reason)}</span>
+      </div>
+
+      ${c.triage.needs_manual_review ? `<div class="flag-item critical"><span class="dot"></span><div>Model unavailable or unusable. Manual review required.</div></div>` : ''}
+      ${c.triage.rule_floor ? `<p class="mono" style="font-size:11px;margin:10px 0;">rule floor: ${esc(c.triage.rule_floor)} · model proposal: ${esc(c.triage.model_proposal || 'none')} · final: ${esc(c.triage.urgency_level)}</p>` : ''}
+
+      <div class="section">
+        <h3>Patient-reported text</h3>
+        <p style="font-size:14px;line-height:1.6;">${esc(c.input.raw_text)}</p>
+      </div>
+
+      <div class="section">
+        <h3>Extracted fields</h3>
+        ${fieldsHtml}
+      </div>
+
+      <div class="section">
+        <h3>Flags</h3>
+        ${flagsHtml}
+      </div>
+
+      <div class="section">
+        <h3>Suggested follow-up questions</h3>
+        ${followupHtml}
+      </div>
+
+      <div class="section">
+        <h3>Reviewer action</h3>
+        <div class="review-actions">
+          <button class="btn primary" onclick="review('${esc(c.case_id)}','approved')">Approve</button>
+          <button class="btn" onclick="review('${esc(c.case_id)}','edited')">Edit notes</button>
+          <button class="btn danger" onclick="review('${esc(c.case_id)}','escalated')">Escalate</button>
+        </div>
+      </div>
+    `;
+  }
+
+
+  // ---- New case form: text, voice note (upload or record) or report image ----
+  let recorded = null, recorder = null;
+
+  function renderNewCase(){
+    selectedCaseId = null; recorded = null;
+    renderCaseList();
+    document.getElementById('detail').innerHTML = `
+      <div class="detail-header"><div><h2>New case</h2><span class="mono">text, voice note or report image</span></div></div>
+      <div class="consent-row"><input type="checkbox" id="fConsent" style="margin-top:3px">
+        <label for="fConsent">The patient has consented to this information being processed. Nothing is processed or stored without consent.</label></div>
+      <div class="form-field"><label for="fType">Input type</label>
+        <select id="fType" onchange="syncForm()">
+          <option value="text">Typed symptoms</option><option value="voice">Voice note</option><option value="report_image">Report image</option></select></div>
+      <div class="form-field" id="rowLang"><label for="fLang">Language spoken or written</label>
+        <select id="fLang"><option value="hi">Hindi or Hinglish</option><option value="en">English</option></select></div>
+      <div class="form-field" id="rowText"><label for="fText">Symptoms</label>
+        <textarea id="fText" placeholder="Type in English, Hindi or Hinglish"></textarea></div>
+      <div class="form-field" id="rowFile" style="display:none"><label for="fFile">File</label>
+        <input type="file" id="fFile">
+        <div id="recRow" style="display:none;gap:8px;align-items:center;margin-top:6px">
+          <button class="btn" type="button" id="recBtn" onclick="toggleRecord()">Record voice</button>
+          <span class="mono" id="recNote" style="font-size:12px"></span></div></div>
+      <div class="form-error" id="fErr"></div>
+      <div class="review-actions"><button class="btn primary" id="fSubmit" onclick="submitNewCase()">Submit case</button>
+        <button class="btn" onclick="loadCases()">Cancel</button></div>`;
+  }
+
+  function syncForm(){
+    const t = document.getElementById('fType').value;
+    document.getElementById('rowText').style.display = t === 'text' ? '' : 'none';
+    document.getElementById('rowFile').style.display = t === 'text' ? 'none' : '';
+    document.getElementById('recRow').style.display = t === 'voice' ? 'flex' : 'none';
+    document.getElementById('fFile').accept = t === 'voice' ? 'audio/*' : 'image/*';
+  }
+
+  async function toggleRecord(){
+    const btn = document.getElementById('recBtn'), note = document.getElementById('recNote');
+    if (recorder && recorder.state === 'recording'){ recorder.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        recorded = new Blob(chunks, {type: recorder.mimeType || 'audio/webm'});
+        btn.textContent = 'Record again'; note.textContent = `Recorded ${(recorded.size/1024).toFixed(0)} KB`;
+      };
+      recorder.start(); btn.textContent = 'Stop recording'; note.textContent = 'Recording…';
+    } catch (e) {
+      note.textContent = 'Microphone unavailable. Upload an audio file instead.';
+    }
+  }
+
+  async function submitNewCase(){
+    const err = document.getElementById('fErr'), btn = document.getElementById('fSubmit');
+    err.textContent = '';
+    const type = document.getElementById('fType').value;
+    const fd = new FormData();
+    fd.append('consent', document.getElementById('fConsent').checked ? 'true' : 'false');
+    fd.append('input_type', type);
+    fd.append('text', document.getElementById('fText').value);
+    fd.append('language', document.getElementById('fLang').value);
+    if (type !== 'text'){
+      const f = document.getElementById('fFile').files[0];
+      if (type === 'voice' && !f && recorded) fd.append('file', recorded, 'recording.webm');
+      else if (f) fd.append('file', f);
+    }
+    btn.disabled = true; btn.textContent = 'Processing…';
+    try {
+      const r = await fetch(API + '/cases/upload', {method:'POST', body: fd});
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(body.detail || ('Error ' + r.status));
+      selectedCaseId = body.case_id;
+      await loadCases();
+    } catch (e) {
+      err.textContent = e.message;
+      btn.disabled = false; btn.textContent = 'Submit case';
+    }
+  }
+
+  // ---------------- Views: queue, all cases, audit log, settings, about ----------------
+  // Fill in the real names before presenting. Leave empty to show only the team name.
+  const TEAM = [
+    // { name: "Member name", role: "What they built" },
+  ];
+
+  let currentView = 'queue', caseFilter = {status:'all', urgency:'all'}, auditFilter = 'all';
+
+  function fmtTime(ts){
+    if (!ts) return '';
+    const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(ts) ? ts : ts + 'Z');
+    return isNaN(d) ? esc(ts) : d.toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  }
+
+  function showView(v){
+    currentView = v;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === v));
+    document.getElementById('caseList').style.display = v === 'queue' ? '' : 'none';
+    if (v === 'queue') return loadCases();
+    if (v === 'cases') return renderAllCases();
+    if (v === 'audit') return renderAudit();
+    if (v === 'settings') return renderSettings();
+    if (v === 'about') return renderAbout();
+  }
+
+  async function renderAllCases(){
+    await refreshCasesOnly();
+    const rows = CASES.filter(c =>
+      (caseFilter.status === 'all' || c.review_status === caseFilter.status) &&
+      (caseFilter.urgency === 'all' || c.triage.urgency_level === caseFilter.urgency));
+    const opt = (list, cur) => list.map(x => `<option value="${x}" ${x === cur ? 'selected' : ''}>${x === 'all' ? 'All' : x}</option>`).join('');
+    document.getElementById('detail').innerHTML = `
+      <div class="detail-header"><div><h2>All cases</h2><span class="mono">${rows.length} of ${CASES.length} shown${LIVE ? '' : ' · demo data'}</span></div></div>
+      <div class="toolbar">
+        <select onchange="caseFilter.status=this.value;renderAllCases()">${opt(['all','pending','approved','edited','escalated'], caseFilter.status)}</select>
+        <select onchange="caseFilter.urgency=this.value;renderAllCases()">${opt(['all','critical','high','medium','low'], caseFilter.urgency)}</select>
+      </div>
+      ${rows.length ? `<table class="tbl"><thead><tr><th>Case</th><th>Input</th><th>Urgency</th><th>Status</th><th>Flags</th><th>Submitted</th></tr></thead><tbody>
+        ${rows.map(c => `<tr class="click" onclick="openCase('${esc(c.case_id)}')">
+          <td class="mono">${esc(c.case_id)}</td><td>${esc(c.input.input_type)}</td>
+          <td><span class="badge ${esc(c.triage.urgency_level)}">${esc(c.triage.urgency_level)}</span>${c.triage.needs_manual_review ? ' <span class="mono" style="font-size:11px">manual review</span>' : ''}</td>
+          <td>${esc(c.review_status)}</td><td>${c.flags.length}</td><td>${fmtTime(c.input.submitted_at)}</td></tr>`).join('')}
+        </tbody></table>` : `<p style="color:var(--steel);font-size:14px">No cases match these filters.</p>`}`;
+  }
+
+  function openCase(id){ selectedCaseId = id; showView('queue'); }
+
+  async function refreshCasesOnly(){
+    try { const r = await fetch(API + '/cases'); if (!r.ok) throw 0; CASES = await r.json(); LIVE = true; }
+    catch (e) { CASES = [...DEMO_CASES]; LIVE = false; }
+  }
+
+  async function renderAudit(){
+    const d = document.getElementById('detail');
+    let entries = [], ok = true;
+    try { const r = await fetch(API + '/audit?limit=300'); if (!r.ok) throw 0; entries = await r.json(); } catch (e) { ok = false; }
+    if (currentView !== 'audit') return;
+    if (!ok){ d.innerHTML = `<div class="detail-header"><div><h2>Audit log</h2></div></div><p style="color:var(--steel);font-size:14px">Start the backend to see the audit log.</p>`; return; }
+    const shown = entries.filter(e => auditFilter === 'all' || e.actor === auditFilter);
+    d.innerHTML = `
+      <div class="detail-header"><div><h2>Audit log</h2><span class="mono">append-only · ${shown.length} entries, newest first</span></div></div>
+      <div class="toolbar"><select onchange="auditFilter=this.value;renderAudit()">
+        ${['all','system','ai','reviewer'].map(x => `<option value="${x}" ${x === auditFilter ? 'selected' : ''}>${x === 'all' ? 'All actors' : x}</option>`).join('')}</select></div>
+      ${shown.length ? `<table class="tbl"><thead><tr><th>Time</th><th>Case</th><th>Actor</th><th>Action</th><th>Details</th></tr></thead><tbody>
+        ${shown.map(e => `<tr><td class="mono" style="white-space:nowrap">${fmtTime(e.timestamp)}</td><td class="mono">${esc(e.case_id)}</td><td>${esc(e.actor)}</td><td>${esc(e.action)}</td><td>${esc(e.details || '')}</td></tr>`).join('')}
+        </tbody></table>` : `<p style="color:var(--steel);font-size:14px">No audit entries yet.</p>`}`;
+  }
+
+  async function renderSettings(){
+    const d = document.getElementById('detail');
+    let c = null;
+    try { const r = await fetch(API + '/config'); if (!r.ok) throw 0; c = await r.json(); } catch (e) {}
+    if (currentView !== 'settings') return;
+    if (!c){ d.innerHTML = `<div class="detail-header"><div><h2>Settings</h2></div></div><p style="color:var(--steel);font-size:14px">Start the backend to see the system configuration.</p>`; return; }
+    const card = (k, v) => `<div class="card"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`;
+    d.innerHTML = `
+      <div class="detail-header"><div><h2>Settings</h2><span class="mono">read-only · change values in backend/config.py</span></div></div>
+      <div class="cards">
+        ${card('Language model', c.slm_provider + ' · ' + c.slm_model)}
+        ${card('Speech to text', 'Whisper ' + c.whisper_model)}
+        ${card('OCR languages', c.ocr_languages)}
+        ${card('Supported languages', c.supported_languages.join(', '))}
+        ${card('Consent required', c.consent_required ? 'Yes' : 'No')}
+        ${card('Red-flag keywords', c.red_flag_keyword_count + ' (starter set)')}
+        ${card('Low-confidence input floor', Math.round(c.input_confidence_floor * 100) + '%')}
+        ${card('Urgency levels', c.urgency_levels.join(' < '))}
+        ${card('Queue aging', c.aging_points_per_hour + ' points per hour')}
+        ${card('Max upload', c.max_upload_mb + ' MB')}
+      </div>`;
+  }
+
+  function renderAbout(){
+    const team = TEAM.length ? `<h3>Team</h3><div class="cards">${TEAM.map(m => `<div class="card"><div class="v">${esc(m.name)}</div><div style="font-size:13.5px;color:var(--steel);margin-top:4px">${esc(m.role || '')}</div></div>`).join('')}</div>` : '';
+    document.getElementById('detail').innerHTML = `
+      <div class="detail-header"><div><h2>About CareFlow AI</h2><span class="mono">Team The_Chaotic_456 · Confluentia 2026 · Tredence track</span></div></div>
+      <div class="about">
+        <p>CareFlow AI is a human-in-the-loop triage assistant. It turns messy patient input (typed symptoms, voice notes and report images, in English, Hindi or Hinglish) into a structured, ranked case. It never diagnoses. A clinician makes every decision.</p>
+        <h3>How a case moves</h3>
+        <ol>
+          <li><b>Consent.</b> Nothing is processed or stored without it.</li>
+          <li><b>Read.</b> Voice goes through Whisper, report images through Tesseract. Poor reads are flagged.</li>
+          <li><b>Structure.</b> Duration and severity are extracted. Missing or low-confidence fields are flagged.</li>
+          <li><b>Rank.</b> Red-flag rules set an urgency floor. The language model can only raise it.</li>
+          <li><b>Review.</b> The queue is ranked by urgency and waiting time. The clinician approves, edits or escalates.</li>
+          <li><b>Audit.</b> Every step is written to an append-only log.</li>
+        </ol>
+        <h3>Guardrails</h3>
+        <ul>
+          <li>Rules set the floor. The model can only raise urgency.</li>
+          <li>If the model fails or a read is unreliable, the case goes to manual review. The system does not guess.</li>
+          <li>Models run locally, so patient data stays on the machine.</li>
+        </ul>
+        <h3>Known limits</h3>
+        <ul>
+          <li>Red-flag rules are a starter set and are not yet clinician-reviewed.</li>
+          <li>Evaluated on 24 synthetic cases only.</li>
+          <li>Hindi to English translation is not wired in yet.</li>
+        </ul>
+        ${team}
+      </div>`;
+  }
+
+  loadCases();
+  setInterval(() => {
+    if (currentView === 'queue') { if (selectedCaseId !== null || !document.getElementById('fType')) loadCases(); }
+    else if (currentView === 'cases') renderAllCases();
+    else if (currentView === 'audit') renderAudit();
+  }, 10000);
+</script>
+</body>
+</html>

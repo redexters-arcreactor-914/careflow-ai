@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "demo-001",
+    "patient_consent_given": true,
+    "input_type": "text",
+    "raw_text": "I have had chest pain since this morning, it comes and goes. Also feeling a bit dizzy.",
+    "declared_language": "en"
+  },
+  {
+    "case_id": "demo-002",
+    "patient_consent_given": true,
+    "input_type": "text",
+    "raw_text": "mujhe 3 din se halka bukhar hai aur gale mein kharash hai",
+    "declared_language": "hi"
+  },
+  {
+    "case_id": "demo-003",
+    "patient_consent_given": true,
+    "input_type": "text",
+    "raw_text": "mera sar dard kar raha hai since yesterday, feeling thoda weak bhi",
+    "declared_language": "mixed"
+  },
+  {
+    "case_id": "demo-004",
+    "patient_consent_given": true,
+    "input_type": "text",
+    "raw_text": "Just a mild headache, nothing serious, will see if it goes away.",
+    "declared_language": "en"
+  }
+]
